@@ -33,8 +33,8 @@ def get_stop_departures(wf, stop_id, response):
             departures = route_direction["Departures"]
             for departure in departures:
                 internet_service_desc = departure["Trip"]["InternetServiceDesc"]
-                edt = parse_date(departure["EDT"])
-                sdt = parse_date(departure["SDT"])
+                edt = parse_date(departure["ETA"])
+                sdt = parse_date(departure["STA"])
                 buses.append({
                     "RouteId": route_id,
                     "Direction": direction,
@@ -49,6 +49,8 @@ def get_stop_departures(wf, stop_id, response):
         time_delta = bus["EDT"] - dt_now
         time_delta_minutes, time_delta_seconds = divmod(time_delta.days * 24 * 60 * 60 + time_delta.seconds, 60)
         time_delta_hours, time_delta_minutes = divmod(time_delta_minutes, 60)
+        if time_delta.days < 0:
+            time_delta_hours = time_delta_minutes = 0
         text_minutes = "minutes" if time_delta_minutes > 1 else "minute"
         text_hours = "hours" if time_delta_hours > 1 else "hour"
         # Construct display item

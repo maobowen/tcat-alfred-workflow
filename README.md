@@ -21,4 +21,4 @@ Enter `tc commons` to get a list of bus stops whose names contain the phrase "co
 This project is powered by [Alfred-Workflow](https://github.com/deanishe/alfred-workflow), a helper library in Python for authors of workflows for Alfred 2 and 3.
 
 ***
-&copy; 2018 [Bowen Mao](https://bmao.tech/).
+&copy; 2019 [Bowen Mao](https://bmao.tech/).
