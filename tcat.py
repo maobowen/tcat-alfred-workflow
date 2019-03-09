@@ -20,8 +20,14 @@ def parse_date(datestring):
 def get_stop_departures(wf, stop_id, response):
     buses = []
     # Show current time
+    stop_name = ""
+    stops = wf.cached_data("tcat_all_stops", get_stop_list, max_age=60 * 60 * 24)
+    for stop in stops:
+        if stop["StopId"] == int(stop_id):
+            stop_name = stop["Name"]
+            break
     dt_now = datetime.datetime.now()
-    wf.add_item(title=u"Now: %s" % dt_now.strftime("%H:%M"), subtitle=u"%s" % dt_now.strftime("%B %-d, %Y, %A"), icon=ICON_CLOCK)
+    wf.add_item(title=u"%s, Now %s" % (stop_name, dt_now.strftime("%H:%M")), subtitle=u"%s" % dt_now.strftime("%B %-d, %Y, %A"), icon=ICON_INFO)
     # Show departure time
     stop_departure = response.json()[0]
     route_directions = stop_departure["RouteDirections"]
@@ -32,16 +38,17 @@ def get_stop_departures(wf, stop_id, response):
         if not is_done:
             departures = route_direction["Departures"]
             for departure in departures:
-                internet_service_desc = departure["Trip"]["InternetServiceDesc"]
-                edt = parse_date(departure["ETA"])
-                sdt = parse_date(departure["STA"])
-                buses.append({
-                    "RouteId": route_id,
-                    "Direction": direction,
-                    "InternetServiceDesc": internet_service_desc,
-                    "SDT": sdt,
-                    "EDT": edt,
-                    })
+                if departure["SDT"]:
+                    internet_service_desc = departure["Trip"]["InternetServiceDesc"]
+                    edt = parse_date(departure["EDT"])
+                    sdt = parse_date(departure["SDT"])
+                    buses.append({
+                        "RouteId": route_id,
+                        "Direction": direction,
+                        "InternetServiceDesc": internet_service_desc,
+                        "SDT": sdt,
+                        "EDT": edt,
+                        })
     # Sort results by EDT
     buses = sorted(buses, key=lambda k: k["EDT"])
     for bus in buses:
@@ -49,26 +56,29 @@ def get_stop_departures(wf, stop_id, response):
         time_delta = bus["EDT"] - dt_now
         time_delta_minutes, time_delta_seconds = divmod(time_delta.days * 24 * 60 * 60 + time_delta.seconds, 60)
         time_delta_hours, time_delta_minutes = divmod(time_delta_minutes, 60)
-        if time_delta.days < 0:
-            time_delta_hours = time_delta_minutes = 0
-        text_minutes = "minutes" if time_delta_minutes > 1 else "minute"
-        text_hours = "hours" if time_delta_hours > 1 else "hour"
-        # Construct display item
-        title_prefix = u"Route %d, SDT %s, EDT %s, " % (bus["RouteId"], bus["SDT"].strftime("%H:%M"), bus["EDT"].strftime("%H:%M"))
-        arg_prefix = u"The next route %d bus will arrive in " % bus["RouteId"]
-        title_suffix = u""
-        if time_delta_hours > 0:
-            title_suffix = u"%d %s %d %s" % (time_delta_hours, text_hours, time_delta_minutes, text_minutes)
-        else:
-            title_suffix = u"%d %s" % (time_delta_minutes, text_minutes)
-        # Add to the list of results for Alfred
-        wf.add_item(
-            title=title_prefix + title_suffix,
-            subtitle=u"%s, %s" % (bus["InternetServiceDesc"], bus["Direction"]),
-            valid=True,
-            arg=arg_prefix + title_suffix,
-            icon=ICON_CLOCK
-            )
+        if time_delta.days >= 0:
+            text_minutes = "minutes" if time_delta_minutes > 1 else "minute"
+            text_hours = "hours" if time_delta_hours > 1 else "hour"
+            # Construct display item
+            title_prefix = u"Route %d, SDT %s, EDT %s, " % (bus["RouteId"], bus["SDT"].strftime("%H:%M"), bus["EDT"].strftime("%H:%M"))
+            arg_prefix = u"The next route %d bus will arrive in " % bus["RouteId"]
+            title_suffix = u""
+            if time_delta_hours > 0:
+                title_suffix = u"%d %s %d %s" % (time_delta_hours, text_hours, time_delta_minutes, text_minutes)
+            else:
+                title_suffix = u"%d %s" % (time_delta_minutes, text_minutes)
+            if bus["InternetServiceDesc"]:
+                subtitle = u"%s, %s" % (bus["InternetServiceDesc"], bus["Direction"])
+            else:
+                subtitle = u"%s" % bus["Direction"]
+            # Add to the list of results for Alfred
+            wf.add_item(
+                title=title_prefix + title_suffix,
+                subtitle=subtitle,
+                valid=True,
+                arg=arg_prefix + title_suffix,
+                icon=ICON_CLOCK
+                )
 
 
 # Get all stops
